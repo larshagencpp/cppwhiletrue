@@ -66,13 +66,15 @@ namespace cwt {
     using buffer_ptr = std::unique_ptr<T, buffer_deleter>;
 
   public:
+    using value_type = T;
+
     devector() {}
 
     devector(devector&& o) :
       m_buffer(std::move(o.m_buffer)),
+      m_buffer_end(o.m_end),
       m_begin(o.m_begin),
-      m_end(o.m_end),
-      m_buffer_end(o.m_end)
+      m_end(o.m_end)
     {
       o.m_begin = nullptr;
       o.m_end = nullptr;
@@ -92,9 +94,7 @@ namespace cwt {
     }
 
     ~devector() {
-      for (; m_begin != m_end; ++m_begin) {
-        m_begin->~T();
-      }
+      detail::destroy_range(m_begin, m_end);
     }
 
     size_t size() const noexcept {
@@ -123,8 +123,20 @@ namespace cwt {
       }
 
       assert(m_begin > m_buffer.get());
-      new (m_begin - 1) T{ std::move(val) };
+      static_assert(std::is_nothrow_move_constructible<T>(), "");
       --m_begin;
+      new (m_begin) T{ std::move(val) };
+    }
+
+    void pop_front() noexcept {
+      assert(size() > 0);
+      m_begin->~T();
+      ++m_begin;
+    }
+
+    T& front() noexcept {
+      assert(size() > 0);
+      return *m_begin;
     }
 
     T* begin() noexcept {
@@ -201,7 +213,7 @@ namespace cwt {
 
       assert(inserted_total > 0);
 
-      auto left_gap_percent = .1 + .8 * (inserted_front / (double)inserted_total);
+      auto left_gap_percent = min_relative_gap + (1.0 - 2.0 * min_relative_gap) * (inserted_front / (double)inserted_total);
 
       assert(left_gap_percent < .91);
       assert(left_gap_percent > .09);
@@ -217,8 +229,9 @@ namespace cwt {
       return left_gap;
     }
 
+    static constexpr double min_relative_gap = .05;
     static constexpr double reallocation_limit = 0.88;
-    static constexpr double growth_factor = 1.7;
+    static constexpr double growth_factor = 1.8;
 
     buffer_ptr m_buffer;
     T* m_buffer_end = nullptr;
