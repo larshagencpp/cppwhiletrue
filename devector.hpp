@@ -13,8 +13,6 @@ namespace cwt {
     template<typename T>
     void relocate(T* first1, T* last1, T* first2, T* last2, std::false_type) {
       if(first2 < first1) {
-        assert(first2 < first1);
-
         static_assert(std::is_nothrow_move_constructible<T>(), "T must be nothrow_move_constructible");
         for (auto ptr = first2; ptr != last2; ++ptr, ++first1) {
           new (ptr) T{ std::move(*first1) };
@@ -52,19 +50,60 @@ namespace cwt {
     void destroy_range(T* first, T* last) {
       destroy_range(first, last, std::is_trivially_destructible<T>());
     }
-  }
 
-	template<typename T>
-	class devector{
+    template<typename T, typename A = std::allocator<T>>
+    class buffer : private A {
+    public:
+      buffer() = default;
+      buffer(size_t size) {
+        m_begin = this->allocate(size);
+        m_end = m_begin + size;
+      }
 
-    struct buffer_deleter {
-      void operator()(T* ptr) {
-        operator delete(ptr);
+      buffer(const buffer&) = delete;
+      buffer(buffer&& o)
+        :
+        m_begin(o.m_begin),
+        m_end(o.m_end)
+      {
+        o.m_begin = nullptr;
+        o.m_end = nullptr;
+      }
+
+      buffer& operator=(const buffer&) = delete;
+      buffer& operator=(buffer&& o) {
+        cleanup();
+        m_begin = o.m_begin;
+        m_end = o.m_end;
+        o.m_begin = nullptr;
+        o.m_end = nullptr;
+        return *this;
+      }
+
+      ~buffer() {
+        cleanup();
+      }
+
+      T* begin() const noexcept {
+        return m_begin;
+      }
+
+      T* end() const noexcept {
+        return m_end;
+      }
+    private:
+      T* m_begin = nullptr;
+      T* m_end = nullptr;
+      void cleanup() {
+        if (m_begin) {
+          this->deallocate(m_begin, m_end - m_begin);
+        }
       }
     };
+  }
 
-    using buffer_ptr = std::unique_ptr<T, buffer_deleter>;
-
+  template<typename T, typename A = std::allocator<T>>
+  class devector {
   public:
     using value_type = T;
 
@@ -72,23 +111,19 @@ namespace cwt {
 
     devector(devector&& o) :
       m_buffer(std::move(o.m_buffer)),
-      m_buffer_end(o.m_end),
       m_begin(o.m_begin),
       m_end(o.m_end)
     {
       o.m_begin = nullptr;
       o.m_end = nullptr;
-      o.m_buffer_end = nullptr;
     }
 
     devector& operator=(devector&& o) {
       m_buffer = std::move(o.m_buffer);
       m_begin = o.m_begin;
       m_end = o.m_end;
-      m_buffer_end = o.m_end;
       o.m_begin = nullptr;
       o.m_end = nullptr;
-      o.m_buffer_end = nullptr;
 
       return *this;
     }
@@ -102,27 +137,27 @@ namespace cwt {
     }
 
     size_t capacity() const noexcept {
-      return m_buffer_end - m_buffer.get();
+      return m_buffer.end() - m_buffer.begin();
     }
 
     void push_back(T val) {
-      assert(m_end <= m_buffer_end);
-      if (m_end == m_buffer_end) {
+      assert(m_end <= m_buffer.end());
+      if (m_end == m_buffer.end()) {
         shift_or_grow();
       }
 
-      assert(m_end < m_buffer_end);
+      assert(m_end < m_buffer.end());
       new (m_end) T{ std::move(val) };
       ++m_end;
     }
 
     void push_front(T val) {
-      assert(m_begin >= m_buffer.get());
-      if (m_begin == m_buffer.get()) {
+      assert(m_begin >= m_buffer.begin());
+      if (m_begin == m_buffer.begin()) {
         shift_or_grow();
       }
 
-      assert(m_begin > m_buffer.get());
+      assert(m_begin > m_buffer.begin());
       static_assert(std::is_nothrow_move_constructible<T>(), "");
       --m_begin;
       new (m_begin) T{ std::move(val) };
@@ -168,7 +203,7 @@ namespace cwt {
     void shift() {
       auto left_gap = calculate_left_gap_size(capacity());
 
-      auto new_begin = m_buffer.get() + left_gap;
+      auto new_begin = m_buffer.begin() + left_gap;
       auto new_end = new_begin + size();
 
       assert(new_begin != m_begin);
@@ -184,19 +219,16 @@ namespace cwt {
 
     void grow() {
       auto new_cap = static_cast<size_t>(capacity() * growth_factor + 2);
-      auto new_buffer = buffer_ptr(static_cast<T*>(operator new (new_cap * sizeof(T))));
+      auto new_buffer = detail::buffer<T,A>(new_cap);
 
       auto left_gap = calculate_left_gap_size(new_cap);
 
-      auto new_begin = new_buffer.get() + left_gap;
+      auto new_begin = new_buffer.begin() + left_gap;
       auto new_end = new_begin + size();
-      auto new_buffer_end = new_buffer.get() + new_cap;
 
-      std::uninitialized_copy(begin(), end(), new_begin);
-      detail::destroy_range(m_begin, m_end);
+      detail::relocate(m_begin, m_end, new_begin, new_end);
 
       m_buffer = std::move(new_buffer);
-      m_buffer_end = new_buffer_end;
       m_begin = new_begin;
       m_end = new_end;
 
@@ -205,36 +237,42 @@ namespace cwt {
     }
 
     size_t calculate_left_gap_size(size_t new_cap) {
-      assert(m_begin == m_buffer.get() || m_end == m_buffer_end);
+      assert(m_begin == m_buffer.begin() || m_end == m_buffer.end());
       
       auto inserted_front = std::max(0ll, m_prev_begin - m_begin);
       auto inserted_back = std::max(0ll, m_end - m_prev_end);
-      auto inserted_total = inserted_front + inserted_back;
+      auto inserted_total = inserted_front + inserted_back + 1;
 
       assert(inserted_total > 0);
 
-      auto left_gap_percent = min_relative_gap + (1.0 - 2.0 * min_relative_gap) * (inserted_front / (double)inserted_total);
+      double max_relative_gap = (new_cap - size() - new_cap * min_relative_gap) / static_cast<double>(new_cap);
+      auto left_gap_percent = min_relative_gap + (max_relative_gap - min_relative_gap) * (inserted_front / (double)inserted_total);
 
-      assert(left_gap_percent < .91);
-      assert(left_gap_percent > .09);
+      assert(left_gap_percent >= min_relative_gap);
 
-      size_t left_gap = left_gap_percent * (new_cap - size());
+      size_t left_gap = static_cast<size_t>(left_gap_percent * new_cap);
 
       left_gap = std::max(1ull, left_gap);
       left_gap = std::min(new_cap - size() - 1ull, left_gap);
 
+      assert(left_gap >= static_cast<size_t>(min_relative_gap * new_cap));
       assert(left_gap > 0);
-      assert(new_cap - size() - left_gap > 0);
+
+#ifndef NDEBUG
+      size_t right_gap = new_cap - size() - left_gap;
+#endif
+
+      assert(right_gap >= static_cast<size_t>(min_relative_gap * new_cap));
+      assert(right_gap > 0);
 
       return left_gap;
     }
 
     static constexpr double min_relative_gap = .05;
-    static constexpr double reallocation_limit = 0.88;
-    static constexpr double growth_factor = 1.8;
+    static constexpr double reallocation_limit = 0.8;
+    static constexpr double growth_factor = 1.93;
 
-    buffer_ptr m_buffer;
-    T* m_buffer_end = nullptr;
+    detail::buffer<T,A> m_buffer;
     T* m_begin = nullptr;
     T* m_end = nullptr;
 
