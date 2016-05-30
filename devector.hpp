@@ -1,4 +1,6 @@
 #pragma once
+#include "detail/buffer.hpp"
+#include "detail/destroy_range.hpp"
 #include <cassert>
 #include <memory>
 #include <cstring> 
@@ -35,71 +37,6 @@ namespace cwt {
     void relocate(T* first1, T* last1, T* first2, T* last2) {
       relocate(first1, last1, first2, last2, std::is_trivial<T>());
     }
-
-    template<typename T>
-    void destroy_range(T*, T*, std::true_type) { }
-
-    template<typename T>
-    void destroy_range(T* first, T* last, std::false_type) {
-      for (; first != last; ++first) {
-        first->~T();
-      }
-    }
-
-    template<typename T>
-    void destroy_range(T* first, T* last) {
-      destroy_range(first, last, std::is_trivially_destructible<T>());
-    }
-
-    template<typename T, typename A = std::allocator<T>>
-    class buffer : private A {
-    public:
-      buffer() = default;
-      buffer(size_t size) {
-        m_begin = this->allocate(size);
-        m_end = m_begin + size;
-      }
-
-      buffer(const buffer&) = delete;
-      buffer(buffer&& o)
-        :
-        m_begin(o.m_begin),
-        m_end(o.m_end)
-      {
-        o.m_begin = nullptr;
-        o.m_end = nullptr;
-      }
-
-      buffer& operator=(const buffer&) = delete;
-      buffer& operator=(buffer&& o) {
-        cleanup();
-        m_begin = o.m_begin;
-        m_end = o.m_end;
-        o.m_begin = nullptr;
-        o.m_end = nullptr;
-        return *this;
-      }
-
-      ~buffer() {
-        cleanup();
-      }
-
-      T* begin() const noexcept {
-        return m_begin;
-      }
-
-      T* end() const noexcept {
-        return m_end;
-      }
-    private:
-      T* m_begin = nullptr;
-      T* m_end = nullptr;
-      void cleanup() {
-        if (m_begin) {
-          this->deallocate(m_begin, m_end - m_begin);
-        }
-      }
-    };
   }
 
   template<typename T, typename A = std::allocator<T>>
