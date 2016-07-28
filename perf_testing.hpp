@@ -1,5 +1,6 @@
 #pragma once
 #include "debug_allocator.hpp"
+#include <array>
 #include <algorithm>
 #include <chrono>
 #include <random>

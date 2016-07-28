@@ -272,6 +272,14 @@ namespace cwt {
       return *current;
     }
 
+    U* inner() {
+      return current;
+    }
+
+    size_t outer() {
+      return array_index;
+    }
+
   private:
     std::reference_wrapper<stack<T, A>> stack_ref;
     U* begin;

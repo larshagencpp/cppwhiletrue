@@ -7,6 +7,48 @@
 #define CATCH_CONFIG_MAIN
 #include <catch.hpp>
 
+template<typename It>
+void cheat_sort(It first, It last) {
+  if (std::distance(first, last) < 20) {
+    std::sort(first, last);
+    return;
+  }
+
+  if (first.outer() == last.outer()) {
+    std::sort(first.inner(), last.inner());
+  }
+  else {
+    using T = typename It::value_type;
+    auto pivots = std::array<T, 3>{ *first, *(first + (last - first) / 2), *(last - 1) };
+    std::sort(pivots.begin(), pivots.end());
+    auto pivot = pivots[1];
+    auto middle = std::partition(first, last, [=](const T& val) { return val < pivot; });
+    cheat_sort(first, middle);
+    cheat_sort(middle, last);
+  }
+}
+
+template<typename C>
+struct cheat_sort_perf_test {
+  cheat_sort_perf_test(size_t N) {
+    random_generator<typename C::value_type> generator;
+    std::generate_n(std::back_inserter(values), N, [&] { return generator(engine); });
+  }
+
+  void operator()() {
+    cheat_sort(values.begin(), values.end());
+  }
+
+  std::mt19937 engine;
+  C values;
+};
+
+template<typename container_t>
+double get_cheat_sort_time(size_t N) {
+  return measure_time_ns([N] { return cheat_sort_perf_test<container_t>(N); });
+}
+
+
 TEST_CASE("New stack is empty") {
   cwt::stack<int> s;
   REQUIRE(s.size() == 0);
@@ -128,7 +170,7 @@ TEST_CASE("Stack is faster than vector for integer push_back") {
   CHECK(stack_time < queue_time);
 }
 
-TEST_CASE("Measure sort time for stack") {
+/*TEST_CASE("Measure sort time for stack") {
   std::cout << std::endl << "integer sorting" << std::endl;
   std::cout << "N, vector, stack, deque" << std::endl;
   for (int N = 10; N < 1'000'000; N *= 2) {
@@ -137,5 +179,17 @@ TEST_CASE("Measure sort time for stack") {
     auto dequeue_time = get_sort_time<std::deque<int>>(N);
     std::cout << N << ", " << vector_time << ", " << stack_time << ", " << dequeue_time << std::endl;
   }
+}*/
+
+TEST_CASE("Measure cheat sort time for stack") {
+  std::cout << std::endl << "integer sorting" << std::endl;
+  std::cout << "N, vector, stack, deque" << std::endl;
+  for (int N = 10; N < 1'000'000; N *= 2) {
+  auto vector_time = get_sort_time<std::vector<int>>(N);
+  auto stack_time = get_cheat_sort_time<cwt::stack<int>>(N);
+  auto dequeue_time = get_sort_time<std::deque<int>>(N);
+  std::cout << N << ", " << vector_time << ", " << stack_time << ", " << dequeue_time << std::endl;
+  }
 }
 #endif
+
