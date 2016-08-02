@@ -93,7 +93,7 @@ TEST_CASE("Add many elements to stack") {
     s.push_back(i);
     v.push_back(i);
     REQUIRE(s.size() == v.size());
-    REQUIRE(*(s.begin() + (s.size() - 1)) == i);
+    REQUIRE(*(s.begin() + (static_cast<int>(v.size()) - 1)) == i);
   }
 
   REQUIRE(std::equal(s.begin(), s.end(), v.begin()));
@@ -137,7 +137,7 @@ TEST_CASE("Iterators work for sorting") {
 TEST_CASE("integer push back average memory usage") {
   std::cout << std::endl << "integer push back average memory usage" << std::endl;
   std::cout << "N, vector, stack, deque" << std::endl;
-  for (int N = 1; N < 100'000; N = N * 1.5 + 1) {
+  for (size_t N = 1; N < 100'000; N = static_cast<size_t>(N * 1.5 + 1)) {
     auto vector_time = get_average_memory_usage<std::vector, int>(N);
     auto stack_time = get_average_memory_usage<cwt::stack, int>(N);
     auto dequeue_time = get_average_memory_usage<std::deque, int>(N);
@@ -148,7 +148,7 @@ TEST_CASE("integer push back average memory usage") {
 TEST_CASE("integer push back total bytes") {
   std::cout << std::endl << "integer push back total bytes" << std::endl;
   std::cout << "N, vector, stack, deque" << std::endl;
-  for (int N = 1; N < 100'000; N = N * 1.5 + 1) {
+  for (size_t N = 1; N < 100'000; N = static_cast<size_t>(N * 1.5 + 1)) {
     auto vector_time = count_total_allocated_bytes<std::vector, int>(N);
     auto stack_time = count_total_allocated_bytes<cwt::stack, int>(N);
     auto dequeue_time = count_total_allocated_bytes<std::deque, int>(N);

@@ -4,10 +4,6 @@
 #include <algorithm>
 #include <chrono>
 #include <random>
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <windows.h>
 
 template<typename T>
 struct random_generator;
@@ -30,15 +26,14 @@ size_t get_num_repeats(const test_generator_t& test_generator) {
     std::vector<std::decay_t<decltype(test_generator())>> tests;
     std::generate_n(std::back_inserter(tests), N, test_generator);
 
-    LARGE_INTEGER start, stop, freq;
-    QueryPerformanceFrequency(&freq);
-    QueryPerformanceCounter(&start);
+    using namespace std::chrono;
+    auto start = high_resolution_clock::now();
     for (auto& test : tests) {
       test();
     }
-    QueryPerformanceCounter(&stop);
+    auto stop = high_resolution_clock::now();
 
-    nanos = ((stop.QuadPart - start.QuadPart) * 1'000'000'000) / freq.QuadPart;
+    nanos = duration_cast<nanoseconds>(stop - start).count();
   }
 
   return N / 2;
@@ -64,15 +59,14 @@ double measure_time_ns(const test_generator_t& test_generator) {
     std::vector<std::decay_t<decltype(test_generator())>> tests;
     std::generate_n(std::back_inserter(tests), repeats, test_generator);
 
-    LARGE_INTEGER start, stop, freq;
-    QueryPerformanceFrequency(&freq);
-    QueryPerformanceCounter(&start);
+    using namespace std::chrono;
+    auto start = high_resolution_clock::now();
     for (auto& test : tests) {
       test();
     }
-    QueryPerformanceCounter(&stop);
+    auto stop = high_resolution_clock::now();
 
-    return ((stop.QuadPart - start.QuadPart) * 1'000'000'000) / freq.QuadPart;
+    return duration_cast<nanoseconds>(stop - start).count();
   });
 
   return static_cast<double>(median) / repeats;
@@ -121,7 +115,7 @@ double get_sort_time(size_t N) {
   return measure_time_ns([N] { return sort_perf_test<container_t>(N); });
 }
 
-template<template<typename T, typename A> typename container_t, typename T>
+template<template<typename T, typename A> class container_t, typename T>
 double get_average_memory_usage(size_t N) {
   struct test_tag {};
   container_t<T, cwt::debug_allocator<T, test_tag>> cont;
@@ -135,7 +129,7 @@ double get_average_memory_usage(size_t N) {
   return  sum_memory_usage / N;
 }
 
-template<template<typename T, typename A> typename container_t, typename T>
+template<template<typename T, typename A> class container_t, typename T>
 size_t count_total_allocated_bytes(size_t N) {
   struct test_tag {};
 

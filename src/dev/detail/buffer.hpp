@@ -48,7 +48,7 @@ namespace cwt {
       T* m_end = nullptr;
       void cleanup() {
         if (m_begin) {
-          this->deallocate(m_begin, m_end - m_begin);
+          this->deallocate(m_begin, static_cast<size_t>(m_end - m_begin));
         }
       }
     };
