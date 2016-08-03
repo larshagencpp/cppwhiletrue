@@ -122,11 +122,11 @@ double get_average_memory_usage(size_t N) {
 
   size_t sum_memory_usage = 0;
   for (unsigned i = 0; i < N; ++i) {
-    cont.push_back(i);
+    cont.push_back(static_cast<T>(i));
     sum_memory_usage += cwt::debug_allocator<T, test_tag>::current_bytes_allocated();
   }
 
-  return  sum_memory_usage / N;
+  return  static_cast<double>(sum_memory_usage) / static_cast<double>(N);
 }
 
 template<template<typename T, typename A> class container_t, typename T>
@@ -137,7 +137,7 @@ size_t count_total_allocated_bytes(size_t N) {
 
   container_t<T, cwt::debug_allocator<T, test_tag>> cont;
   for (unsigned i = 0; i < N; ++i) {
-    cont.push_back(i);
+    cont.push_back(static_cast<T>(i));
   }
 
   auto stop = cwt::debug_allocator<T, test_tag>::total_bytes_allocated();

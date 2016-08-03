@@ -5,7 +5,14 @@
 #include <deque>
 
 #define CATCH_CONFIG_MAIN
+#ifdef _MSC_VER
+#pragma warning( push )
+#pragma warning ( disable : 6330 28251 )
+#endif
 #include <catch.hpp>
+#ifdef _MSC_VER
+#pragma warning( pop )
+#endif
 
 template<typename It>
 void cheat_sort(It first, It last) {
@@ -47,7 +54,6 @@ template<typename container_t>
 double get_cheat_sort_time(size_t N) {
   return measure_time_ns([N] { return cheat_sort_perf_test<container_t>(N); });
 }
-
 
 TEST_CASE("New stack is empty") {
   cwt::stack<int> s;
@@ -137,7 +143,7 @@ TEST_CASE("Iterators work for sorting") {
 TEST_CASE("integer push back average memory usage") {
   std::cout << std::endl << "integer push back average memory usage" << std::endl;
   std::cout << "N, vector, stack, deque" << std::endl;
-  for (size_t N = 1; N < 100'000; N = static_cast<size_t>(N * 1.5 + 1)) {
+  for (size_t N = 1; N < 100'000; N = static_cast<size_t>(static_cast<double>(N) * 1.5 + 1)) {
     auto vector_time = get_average_memory_usage<std::vector, int>(N);
     auto stack_time = get_average_memory_usage<cwt::stack, int>(N);
     auto dequeue_time = get_average_memory_usage<std::deque, int>(N);
@@ -148,7 +154,7 @@ TEST_CASE("integer push back average memory usage") {
 TEST_CASE("integer push back total bytes") {
   std::cout << std::endl << "integer push back total bytes" << std::endl;
   std::cout << "N, vector, stack, deque" << std::endl;
-  for (size_t N = 1; N < 100'000; N = static_cast<size_t>(N * 1.5 + 1)) {
+  for (size_t N = 1; N < 100'000; N = static_cast<size_t>(static_cast<double>(N) * 1.5 + 1)) {
     auto vector_time = count_total_allocated_bytes<std::vector, int>(N);
     auto stack_time = count_total_allocated_bytes<cwt::stack, int>(N);
     auto dequeue_time = count_total_allocated_bytes<std::deque, int>(N);

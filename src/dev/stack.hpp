@@ -1,6 +1,7 @@
 #pragma once
 #include "detail/buffer.hpp"
 #include "detail/destroy_range.hpp"
+#include "bitutils.hpp"
 #include <cassert>
 #include <vector>
 #include <cstddef>
@@ -28,7 +29,7 @@ namespace cwt {
       }
       
       auto& first_array = *m_arrays.begin();
-      return{ *this, 0, CWT_DEBUG_ONLY(array_index,) first_array.begin(), first_array.begin(), first_array.end() };
+      return{ *this, CWT_DEBUG_ONLY(0,) array_index, first_array.begin(), first_array.begin(), first_array.end() };
     }
 
     iterator end() noexcept {
@@ -44,11 +45,13 @@ namespace cwt {
     }
 
     size_t size() const noexcept {
-      if(current_index == -1) {
+      if(current_index < 0) {
         return 0;
       }
 
-      auto bucket_size = ((1ull << (static_cast<size_t>(current_index) + 1ull)) >> 1ull) - 1ull;
+      auto current_uindex = static_cast<size_t>(current_index);
+      auto bucket_size = ((1ull << (current_uindex + 1ull)) >> 1ull) - 1ull;
+      assert(current_end >= current_begin);
       return bucket_size + static_cast<size_t>(current_end - current_begin);
     }
 
@@ -108,14 +111,7 @@ namespace cwt {
     int current_index = -1;
 
     static size_t get_array_index(size_t index) {
-      unsigned long array_index;
-      static_assert(sizeof(void*) == 8, "Only 64-bit build is supported.");
-#ifdef _MSC_VER
-      _BitScanReverse64(&array_index, index + 1ull);
-#else
-      array_index = 31 - static_cast<unsigned long>(__builtin_clzl(index + 1));
-#endif
-      return array_index;
+      return bit_scan_reverse_non_negative(static_cast<uint64_t>(index + 1ull));
     }
   };
 
@@ -186,7 +182,7 @@ namespace cwt {
       assert(index == stack_ref.get().size() || &stack_ref.get()[index] == current);
       
       assert(static_cast<difference_type>(index) - diff >= 0);
-      assert(static_cast<difference_type>(index) - diff <= static_cast<difference_type>(stack_ref.get().size());
+      assert(static_cast<difference_type>(index) - diff <= static_cast<difference_type>(stack_ref.get().size()));
 
       current -= diff;
       CWT_DEBUG_ONLY(index = static_cast<size_t>(static_cast<difference_type>(index) - diff));
@@ -205,12 +201,12 @@ namespace cwt {
     iterator_templ& operator+=(difference_type diff) noexcept {
       assert(index == stack_ref.get().size() || &stack_ref.get()[index] == current);
 
-      assert(index + diff >= 0);
-      assert(index + diff <= stack_ref.get().size());
+      assert(static_cast<difference_type>(index) + diff >= 0);
+      assert(static_cast<difference_type>(index) + diff <= static_cast<difference_type>(stack_ref.get().size()));
       
       auto new_current = current + diff;
       if (new_current < begin || new_current >= end) {
-        set_linear_index(get_linear_index() + diff);
+        set_linear_index(get_linear_index() + static_cast<size_t>(diff));
       }
       else {
         current = new_current;
@@ -299,6 +295,7 @@ namespace cwt {
     size_t array_index;
 
     size_t get_linear_index() const noexcept {
+      assert(current >= begin);
       auto ret = (1ull << array_index) - 1ull + static_cast<size_t>(current - begin);
       assert(ret == index);
       return ret;
