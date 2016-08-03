@@ -1,4 +1,6 @@
 #include "bitutils.hpp"
+
+#define CATCH_CONFIG_MAIN
 #include "include_catch.hpp"
 
 TEST_CASE("Bit scan reversal for non-negative numbers give correct results") {

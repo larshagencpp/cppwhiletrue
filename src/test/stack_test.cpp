@@ -5,14 +5,7 @@
 #include <deque>
 
 #define CATCH_CONFIG_MAIN
-#ifdef _MSC_VER
-#pragma warning( push )
-#pragma warning ( disable : 6330 28251 )
-#endif
-#include <catch.hpp>
-#ifdef _MSC_VER
-#pragma warning( pop )
-#endif
+#include "include_catch.hpp"
 
 template<typename It>
 void cheat_sort(It first, It last) {
