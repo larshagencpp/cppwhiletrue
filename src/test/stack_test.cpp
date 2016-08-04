@@ -19,7 +19,7 @@ void cheat_sort(It first, It last) {
   }
   else {
     using T = typename It::value_type;
-    auto pivots = std::array<T, 3>{ *first, *(first + (last - first) / 2), *(last - 1) };
+    std::array<T,3> pivots{{ *first, *(first + (last - first) / 2), *(last - 1) }};
     std::sort(pivots.begin(), pivots.end());
     auto pivot = pivots[1];
     auto middle = std::partition(first, last, [=](const T& val) { return val < pivot; });
@@ -183,11 +183,11 @@ TEST_CASE("Stack is faster than vector for integer push_back") {
 TEST_CASE("Measure cheat sort time for stack") {
   std::cout << std::endl << "integer sorting" << std::endl;
   std::cout << "N, vector, stack, deque" << std::endl;
-  for (int N = 10; N < 1'000'000; N *= 2) {
-  auto vector_time = get_sort_time<std::vector<int>>(N);
-  auto stack_time = get_cheat_sort_time<cwt::stack<int>>(N);
-  auto dequeue_time = get_sort_time<std::deque<int>>(N);
-  std::cout << N << ", " << vector_time << ", " << stack_time << ", " << dequeue_time << std::endl;
+  for (size_t N = 10; N < 1'000'000; N *= 2) {
+    auto vector_time = get_sort_time<std::vector<int>>(N);
+    auto stack_time = get_cheat_sort_time<cwt::stack<int>>(N);
+    auto dequeue_time = get_sort_time<std::deque<int>>(N);
+    std::cout << N << ", " << vector_time << ", " << stack_time << ", " << dequeue_time << std::endl;
   }
 }
 #endif

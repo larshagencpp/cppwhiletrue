@@ -12,7 +12,7 @@ template<>
 struct random_generator<int> {
   template<typename engine_t>
   int operator()(engine_t& engine) {
-    return engine();
+    return static_cast<int>(engine());
   }
 };
 
@@ -69,7 +69,7 @@ double measure_time_ns(const test_generator_t& test_generator) {
     return duration_cast<nanoseconds>(stop - start).count();
   });
 
-  return static_cast<double>(median) / repeats;
+  return static_cast<double>(median) / static_cast<double>(repeats);
 }
 
 template<typename C>
