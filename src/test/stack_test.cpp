@@ -157,16 +157,21 @@ TEST_CASE("integer push back total bytes") {
 
 #ifdef NDEBUG
 TEST_CASE("Stack is faster than vector for integer push_back") {
-  auto vec_time = get_push_back_time<std::vector<int>>(1'000'000);
-  auto queue_time = get_push_back_time<std::deque<int>>(1'000'000);
-  auto stack_time = get_push_back_time<cwt::stack<int>>(1'000'000);
-
-  WARN(vec_time);
-  WARN(queue_time);
-  WARN(stack_time);
-
-  CHECK(stack_time < vec_time);
-  CHECK(stack_time < queue_time);
+  std::cout << std::endl << "integer push back" << std::endl;
+  std::cout << "N, vector, stack, deque" << std::endl;
+  for (size_t N = 1000; N < 1'000'000; N *= 2) {
+    auto vec_time = get_push_back_time<std::vector<int>>(N);
+    auto queue_time = get_push_back_time<std::deque<int>>(N);
+    auto stack_time = get_push_back_time<cwt::stack<int>>(N);
+    std::cout << N 
+      << ", " << vec_time
+      << ", " << stack_time
+      << ", " << queue_time
+      << std::endl;
+    
+    CHECK(stack_time < vec_time);
+    CHECK(stack_time < queue_time);
+  }
 }
 
 /*TEST_CASE("Measure sort time for stack") {
