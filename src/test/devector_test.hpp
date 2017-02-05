@@ -190,7 +190,7 @@ double get_max_push_back_time(size_t N) {
       auto start = high_resolution_clock::now();
       c.push_back(std::move(val));
       auto stop = high_resolution_clock::now();
-      max_time = std::max(max_time, duration_cast<nanoseconds>(stop - start).count());
+      max_time = std::max(max_time, static_cast<int64_t>(duration_cast<nanoseconds>(stop - start).count()));
     }
 
     return static_cast<double>(max_time);
