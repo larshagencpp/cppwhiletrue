@@ -1,5 +1,6 @@
 #pragma once
 #include <cstddef>
+#include <cstdlib>
 #include <memory>
 #include <map>
 #include <limits>
@@ -47,6 +48,9 @@ namespace cwt {
     debug_allocator(const debug_allocator<U, tag_t>&) {}
     template<typename U>
     debug_allocator(debug_allocator<U, tag_t>&&) {}
+
+    template<typename U>
+    struct rebind{ using other = debug_allocator<U,tag_t>; };
 
     pointer allocate(size_t n) {
       pointer ptr = std::allocator<T>().allocate(n);
