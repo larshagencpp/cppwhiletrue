@@ -1,6 +1,8 @@
 #pragma once
+#include <cstddef>
 #include <memory>
 #include <map>
+#include <limits>
 
 namespace cwt {
   template<typename tag_t>
@@ -34,6 +36,11 @@ namespace cwt {
   public:
     using value_type = T;
     using pointer = T*;
+    using const_pointer = T const*;
+    using reference = T&;
+    using const_reference = T const&;
+    using difference_type = ptrdiff_t;
+    using size_type = size_t;
 
     debug_allocator() = default;
     template<typename U>
@@ -58,6 +65,10 @@ namespace cwt {
       return ptr;
     }
 
+    pointer allocate( std::size_t n, const void *) {
+      return allocate(n);
+    }
+
     void deallocate(pointer ptr, size_t n) {
       auto it = this->m_live_allocations.find(ptr);
       if (it == this->m_live_allocations.end()) {
@@ -75,6 +86,22 @@ namespace cwt {
 
       std::allocator<T>().deallocate(ptr, n);
     }
+
+    template<typename ...Args>
+    void construct(pointer ptr, Args&&... args) {
+      new (ptr) value_type{std::forward<Args>(args)...};
+    }
+
+    template<typename U>
+    void destroy(U* ptr) noexcept {
+      (void)ptr;
+      ptr->~U();
+    }
+
+    size_type max_size() const noexcept {
+      return std::numeric_limits<size_type>::max() / sizeof(value_type);
+    }
+
   private:
   };
 }

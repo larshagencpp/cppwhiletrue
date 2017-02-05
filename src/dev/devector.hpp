@@ -9,7 +9,8 @@ namespace cwt {
   namespace detail {
     template<typename T>
     void relocate(T* first1, T* last1, T* first2, T*, std::true_type) {
-      std::memmove(first2, first1, (last1 - first1)*sizeof(T));
+      assert(last1 >= first1);
+      std::memmove(first2, first1, static_cast<size_t>(last1 - first1)*sizeof(T));
     }
 
     template<typename T>
@@ -70,11 +71,12 @@ namespace cwt {
     }
 
     size_t size() const noexcept {
-      return m_end - m_begin;
+      assert(m_end >= m_begin);
+      return static_cast<size_t>(m_end - m_begin);
     }
 
     size_t capacity() const noexcept {
-      return m_buffer.end() - m_buffer.begin();
+      return m_buffer.size();
     }
 
     void push_back(T val) {
@@ -127,7 +129,7 @@ namespace cwt {
   private:
     
     void shift_or_grow() {
-      if (size() / static_cast<double>(capacity()) < reallocation_limit
+      if (static_cast<double>(size()) / static_cast<double>(capacity()) < reallocation_limit
         && capacity() - size() >= 2)
       {
         shift();
@@ -155,7 +157,7 @@ namespace cwt {
     }
 
     void grow() {
-      auto new_cap = static_cast<size_t>(capacity() * growth_factor + 2);
+      auto new_cap = static_cast<size_t>(static_cast<double>(capacity()) * growth_factor + 2);
       auto new_buffer = detail::buffer<T,A>(new_cap);
 
       auto left_gap = calculate_left_gap_size(new_cap);
@@ -176,21 +178,21 @@ namespace cwt {
     size_t calculate_left_gap_size(size_t new_cap) {
       assert(m_begin == m_buffer.begin() || m_end == m_buffer.end());
       
-      auto inserted_front = std::max(0ll, m_prev_begin - m_begin);
-      auto inserted_back = std::max(0ll, m_end - m_prev_end);
+      auto inserted_front = std::max(0ll, static_cast<long long>(m_prev_begin - m_begin));
+      auto inserted_back = std::max(0ll, static_cast<long long>(m_end - m_prev_end));
       auto inserted_total = inserted_front + inserted_back + 1;
 
       assert(inserted_total > 0);
 
-      double max_relative_gap = (new_cap - size() - new_cap * min_relative_gap) / static_cast<double>(new_cap);
-      auto left_gap_percent = min_relative_gap + (max_relative_gap - min_relative_gap) * (inserted_front / (double)inserted_total);
+      double max_relative_gap = (static_cast<double>(new_cap - size()) - static_cast<double>(new_cap) * min_relative_gap) / static_cast<double>(new_cap);
+      auto left_gap_percent = min_relative_gap + (max_relative_gap - min_relative_gap) * (static_cast<double>(inserted_front) / static_cast<double>(inserted_total));
 
       assert(left_gap_percent >= min_relative_gap);
 
-      size_t left_gap = static_cast<size_t>(left_gap_percent * new_cap);
+      size_t left_gap = static_cast<size_t>(left_gap_percent * static_cast<double>(new_cap));
 
-      left_gap = std::max(1ull, left_gap);
-      left_gap = std::min(new_cap - size() - 1ull, left_gap);
+      left_gap = std::max(size_t(1), left_gap);
+      left_gap = std::min(static_cast<size_t>(new_cap - size() - 1ull), left_gap);
 
       assert(left_gap >= static_cast<size_t>(min_relative_gap * new_cap));
       assert(left_gap > 0);

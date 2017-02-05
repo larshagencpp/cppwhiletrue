@@ -5,6 +5,15 @@
 #include <chrono>
 #include <random>
 
+#ifdef __unix__
+#include <sys/time.h>
+#include <sys/resource.h>
+#elif defined(_WIN32) || defined(WIN32)
+#define NOMINMAX
+#include <windows.h>
+#include <psapi.h>
+#endif
+
 template<typename T>
 struct random_generator;
 
@@ -72,6 +81,41 @@ double measure_time_ns(const test_generator_t& test_generator) {
   return static_cast<double>(median) / static_cast<double>(repeats);
 }
 
+auto get_page_fault_count() {
+#ifdef __unix__
+  rusage usage;
+  auto ret = getrusage(RUSAGE_SELF, &usage);
+  if(ret != 0) {
+    throw std::runtime_error("getrusage() call failed");
+  }
+  
+  return usage.ru_minflt + usage.ru_majflt;
+#elif defined(_WIN32) || defined(WIN32)
+  PROCESS_MEMORY_COUNTERS pmc;
+  if(!GetProcessMemoryInfo( GetCurrentProcess(), &pmc, sizeof(pmc))) {
+    throw std::runtime_error("GetProcessMemoryInfo() call failed");
+  }
+  
+  return pmc.PageFaultCount;
+#endif  
+}
+
+template<typename test_generator_t>
+double measure_page_faults(const test_generator_t& test_generator) {
+  auto median = get_median(51, [&] {
+    auto test = test_generator();
+
+    using namespace std::chrono;
+    auto start = get_page_fault_count();
+    test();
+    auto stop = get_page_fault_count();
+
+    return stop - start;
+  });
+
+  return static_cast<double>(median);
+}
+
 template<typename C>
 struct push_back_perf_test {
   push_back_perf_test(size_t N) {
@@ -93,6 +137,11 @@ struct push_back_perf_test {
 template<typename container_t>
 double get_push_back_time(size_t N) {
   return measure_time_ns([N] { return push_back_perf_test<container_t>(N); });
+}
+
+template<typename container_t>
+double get_push_back_page_faults(size_t N) {
+  return measure_page_faults([N] { return push_back_perf_test<container_t>(N); });
 }
 
 template<typename C>

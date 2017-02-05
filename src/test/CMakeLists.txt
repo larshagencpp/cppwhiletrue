@@ -1,4 +1,6 @@
 include_directories(../dev)
 include_directories(../../external/Catch/include)
 add_executable(stack_test stack_test.cpp)
+add_executable(devector_test devector_test.cpp)
+add_executable(devector_perf devector_perf.cpp)
 add_executable(bitutils_test bitutils_test.cpp)

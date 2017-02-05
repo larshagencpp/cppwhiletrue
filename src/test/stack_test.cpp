@@ -1,6 +1,7 @@
 #include "stack.hpp"
 #include "perf_testing.hpp"
 #include "debug_t.hpp"
+#include "freelist_allocator.hpp"
 #include <numeric>
 #include <deque>
 
@@ -159,7 +160,7 @@ TEST_CASE("integer push back total bytes") {
 TEST_CASE("Stack is faster than vector for integer push_back") {
   std::cout << std::endl << "integer push back" << std::endl;
   std::cout << "N, vector, stack, deque" << std::endl;
-  for (size_t N = 1000; N < 1'000'000; N *= 2) {
+  for (size_t N = 10; N < 10'000'000; N *= 2) {
     auto vec_time = get_push_back_time<std::vector<int>>(N);
     auto queue_time = get_push_back_time<std::deque<int>>(N);
     auto stack_time = get_push_back_time<cwt::stack<int>>(N);
@@ -168,9 +169,51 @@ TEST_CASE("Stack is faster than vector for integer push_back") {
       << ", " << stack_time
       << ", " << queue_time
       << std::endl;
-    
-    CHECK(stack_time < vec_time);
-    CHECK(stack_time < queue_time);
+  }
+}
+
+TEST_CASE("Stack is faster than vector for integer push_back, freelist allocator") {
+  std::cout << std::endl << "integer push back with free list" << std::endl;
+  std::cout << "N, vector, stack, deque" << std::endl;
+  for (size_t N = 10; N < 10'000'000; N *= 2) {
+    auto vec_time = get_push_back_time<std::vector<int, cwt::freelist_allocator<int>>>(N);
+    auto queue_time = get_push_back_time<std::deque<int>>(N);
+    auto stack_time = get_push_back_time<cwt::stack<int, cwt::freelist_allocator<int>>>(N);
+    std::cout << N 
+      << ", " << vec_time
+      << ", " << stack_time
+      << ", " << queue_time
+      << std::endl;
+  }
+}
+
+TEST_CASE("Measure page faults for integer push back") {
+  std::cout << std::endl << "page faults for integer push back" << std::endl;
+  std::cout << "N, vector, stack, deque" << std::endl;
+  for (size_t N = 100'000; N < 10'000'000; N *= 2) {
+    auto vec_time = get_push_back_page_faults<std::vector<int>>(N);
+    auto queue_time = get_push_back_page_faults<std::deque<int>>(N);
+    auto stack_time = get_push_back_page_faults<cwt::stack<int>>(N);
+    std::cout << N 
+      << ", " << vec_time
+      << ", " << stack_time
+      << ", " << queue_time
+      << std::endl;
+  }
+}
+
+TEST_CASE("Measure page faults for integer push back, freelist allocator") {
+  std::cout << std::endl << "page faults for integer push back, freelist allocator" << std::endl;
+  std::cout << "N, vector, stack, deque" << std::endl;
+  for (size_t N = 100'000; N < 10'000'000; N *= 2) {
+    auto vec_time = get_push_back_page_faults<std::vector<int, cwt::freelist_allocator<int>>>(N);
+    auto queue_time = get_push_back_page_faults<std::deque<int, cwt::freelist_allocator<int>>>(N);
+    auto stack_time = get_push_back_page_faults<cwt::stack<int, cwt::freelist_allocator<int>>>(N);
+    std::cout << N 
+      << ", " << vec_time
+      << ", " << stack_time
+      << ", " << queue_time
+      << std::endl;
   }
 }
 

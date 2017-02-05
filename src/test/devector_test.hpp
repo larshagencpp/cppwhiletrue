@@ -7,7 +7,7 @@
 #include <random>
 #include <algorithm>
 
-template<template<typename T, typename A> typename container_t, typename T>
+template<template<typename T, typename A> class container_t, typename T>
 int count_allocations_front(size_t N) {
   struct test_tag {};
 
@@ -15,7 +15,7 @@ int count_allocations_front(size_t N) {
 
   container_t<T, cwt::debug_allocator<T, test_tag>> cont;
   for (unsigned i = 0; i < N; ++i) {
-    cont.push_front(i);
+    cont.push_front(static_cast<T>(i));
   }
 
   auto stop = cwt::debug_allocator<T, test_tag>::total_allocations();
@@ -23,7 +23,7 @@ int count_allocations_front(size_t N) {
   return static_cast<int>(stop - start);
 }
 
-template<template<typename T, typename A> typename container_t, typename T>
+template<template<typename T, typename A> class container_t, typename T>
 int count_allocations(size_t N) {
   struct test_tag {};
 
@@ -31,7 +31,7 @@ int count_allocations(size_t N) {
 
   container_t<T, cwt::debug_allocator<T, test_tag>> cont;
   for (unsigned i = 0; i < N; ++i) {
-    cont.push_back(i);
+    cont.push_back(static_cast<T>(i));
   }
 
   auto stop = cwt::debug_allocator<T, test_tag>::total_allocations();
@@ -39,7 +39,7 @@ int count_allocations(size_t N) {
   return static_cast<int>(stop - start);
 }
 
-template<template<typename T, typename A = std::allocator<T>> typename container_t>
+template<template<typename T, typename A = std::allocator<T>> class container_t>
 int count_copy_constructions(size_t N) {
   struct test_tag {};
 
@@ -47,7 +47,7 @@ int count_copy_constructions(size_t N) {
 
   container_t<cwt::debug_t<test_tag>> cont;
   for (unsigned i = 0; i < N; ++i) {
-    cont.push_back(i);
+    cont.push_back(cwt::debug_t<test_tag>{static_cast<int>(i)});
   }
 
   auto stop = cwt::debug_t<test_tag>::total_copy_constructions();
@@ -55,7 +55,7 @@ int count_copy_constructions(size_t N) {
   return static_cast<int>(stop - start);
 }
 
-template<template<typename T, typename A = std::allocator<T>> typename container_t>
+template<template<typename T, typename A = std::allocator<T>> class container_t>
 int count_move_constructions(size_t N) {
   struct test_tag {};
 
@@ -63,7 +63,7 @@ int count_move_constructions(size_t N) {
 
   container_t<cwt::debug_t<test_tag>> cont;
   for (unsigned i = 0; i < N; ++i) {
-    cont.push_back(i);
+    cont.push_back(cwt::debug_t<test_tag>{static_cast<int>(i)});
   }
 
   auto stop = cwt::debug_t<test_tag>::total_move_constructions();
@@ -181,21 +181,18 @@ double get_max_push_back_time(size_t N) {
   random_generator<typename container_t::value_type> generator;
   std::generate_n(std::back_inserter(values), N, [&] { return generator(engine); });
 
-  LARGE_INTEGER freq;
-  QueryPerformanceFrequency(&freq);
-
   return get_median(101, [&] {
     int64_t max_time = 0;
-    LARGE_INTEGER start, stop;
+    using namespace std::chrono;
     
     container_t c;
     for (const auto& val : values) {
-      QueryPerformanceCounter(&start);
+      auto start = high_resolution_clock::now();
       c.push_back(std::move(val));
-      QueryPerformanceCounter(&stop);
-      max_time = std::max(max_time, stop.QuadPart - start.QuadPart);
+      auto stop = high_resolution_clock::now();
+      max_time = std::max(max_time, duration_cast<nanoseconds>(stop - start).count());
     }
 
-    return (max_time * 1'000'000'000) / freq.QuadPart;
+    return static_cast<double>(max_time);
   });
 }

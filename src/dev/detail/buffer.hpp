@@ -1,4 +1,5 @@
 #pragma once
+#include <cassert>
 #include <memory>
 
 namespace cwt {
@@ -43,12 +44,19 @@ namespace cwt {
       T* end() const noexcept {
         return m_end;
       }
+
+
+      size_t size() const noexcept {
+        assert(m_end >= m_begin);
+        return static_cast<size_t>(m_end - m_begin);
+      }
+
     private:
       T* m_begin = nullptr;
       T* m_end = nullptr;
       void cleanup() {
         if (m_begin) {
-          this->deallocate(m_begin, static_cast<size_t>(m_end - m_begin));
+          this->deallocate(m_begin, size());
         }
       }
     };

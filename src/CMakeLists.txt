@@ -10,7 +10,7 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   endif()
   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /WX /analyze")
 else()
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -Wpedantic -Wfatal-errors -std=c++1y -Wconversion -Wsign-conversion")
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -Wpedantic -Wfatal-errors -std=c++1y -Wconversion -Wsign-conversion -Wnull-dereference -Wstrict-overflow=5 -Wshadow")
 endif()
 
 enable_testing()

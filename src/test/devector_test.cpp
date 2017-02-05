@@ -9,7 +9,7 @@
 #include <deque>
 
 #define CATCH_CONFIG_MAIN
-#include <catch.hpp>
+#include "include_catch.hpp"
 
 TEST_CASE("New devector is empty") {
   cwt::devector<int> dv;
@@ -178,7 +178,7 @@ TEST_CASE("Devector has about the same memory churn as vector") {
   auto vec_bytes = count_total_allocated_bytes<std::vector, int>(100'000);
   auto devec_bytes = count_total_allocated_bytes<cwt::devector, int>(100'000);
 
-  REQUIRE(devec_bytes <= vec_bytes * perf_slack);
+  REQUIRE(devec_bytes <= static_cast<double>(vec_bytes) * perf_slack);
 }
 
 #ifdef NDEBUG
