@@ -104,7 +104,9 @@ namespace cwt {
     }
 
   private:
-    std::vector<cwt::detail::buffer<T,A>,A> m_arrays;
+    using buffer_t = cwt::detail::buffer<T,A>;
+    using rebound = typename A::template rebind<buffer_t>::other;
+    std::vector<buffer_t,rebound> m_arrays;
     T* current_begin = nullptr;
     T* current_end = nullptr;
     T* current_array_end = nullptr;
@@ -152,6 +154,18 @@ namespace cwt {
         (array_index == o.array_index &&
           current < o.current);
     }
+
+    bool operator>(const iterator_templ& o) const noexcept {
+      return array_index > o.array_index ||
+        (array_index == o.array_index &&
+          current > o.current);
+    }
+
+    bool operator>=(const iterator_templ& o) const noexcept {
+      return array_index > o.array_index ||
+        (array_index == o.array_index &&
+          current >= o.current);
+    } 
 
     difference_type operator-(const iterator_templ& o) const noexcept {
       if (array_index == o.array_index) {
