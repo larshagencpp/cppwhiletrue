@@ -21,6 +21,9 @@ namespace cwt {
     template<typename U>
     freelist_allocator(freelist_allocator<U>&&) {}
 
+    template<typename U>
+    struct rebind { using other = freelist_allocator<U>; };
+
     pointer allocate(size_t n) {
       auto& allocs = freelist[n * sizeof(T)];
       if(allocs.empty()) {
