@@ -1,6 +1,7 @@
 #pragma once
 #include "detail/buffer.hpp"
 #include "detail/destroy_range.hpp"
+#include <algorithm>
 #include <cassert>
 #include <memory>
 #include <cstring> 
