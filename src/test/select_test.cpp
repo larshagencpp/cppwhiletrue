@@ -15,9 +15,9 @@ auto generate_numbers(int n, std::mt19937& engine) {
 
 template<typename... F>
 std::vector<uint64_t> measure_times(
-  int n,
-  const std::vector<int>& orig,
-  std::vector<int>& scratch)
+  int,
+  const std::vector<int>&,
+  std::vector<int>&)
 {
   return {};
 }
@@ -40,7 +40,7 @@ int64_t median_time(
   }
 
   std::nth_element(times.begin(), times.begin() + repeats/2, times.end());
-  return times[repeats/2];
+  return times[static_cast<size_t>(repeats/2)];
 }
 
 template<typename F, typename... Fs>
@@ -102,7 +102,7 @@ void test_correctness(const F& algo) {
     auto numbers = generate_numbers(1'000, engine);
     auto copy = numbers;
 
-    auto pos = engine() % numbers.size();
+    auto pos = static_cast<std::ptrdiff_t>(engine() % numbers.size());
     algo(numbers.begin(), numbers.begin() + pos, numbers.end(), std::less<>());
 
     std::sort(numbers.begin(), numbers.begin() + pos);
@@ -118,12 +118,12 @@ void test_correctness(const F& algo) {
 template<typename I, typename C>
 void heap_select(I begin, I middle, I end, const C& comp) {
   auto one_past_middle = middle + 1;
-  std::make_heap(begin, one_past_middle);
+  std::make_heap(begin, one_past_middle, comp);
   for (auto it = one_past_middle; it < end; ++it) {
-    if (*it < *begin) {
-      std::pop_heap(begin, one_past_middle);
+    if (comp(*it, *begin)) {
+      std::pop_heap(begin, one_past_middle, comp);
       std::swap(*it, *middle);
-      std::push_heap(begin, one_past_middle);
+      std::push_heap(begin, one_past_middle, comp);
     }
   }
 
@@ -133,19 +133,19 @@ void heap_select(I begin, I middle, I end, const C& comp) {
 template<typename I, typename C>
 void select_select(I begin, I middle, I end, const C& comp) {
   auto one_past_middle = middle + 1;
-  std::swap(*middle, *std::max_element(begin, one_past_middle));
+  std::swap(*middle, *std::max_element(begin, one_past_middle, comp));
   auto end_of_current_set = one_past_middle;
   for (auto it = one_past_middle; it < end; ++it) {
-    if (*it < *middle) {
+    if (comp(*it, *middle)) {
       std::swap(*it, *end_of_current_set++);
       if (end_of_current_set - begin > 2 * (one_past_middle - begin)) {
-        std::nth_element(begin, middle, end_of_current_set);
+        std::nth_element(begin, middle, end_of_current_set, comp);
         end_of_current_set = one_past_middle;
       }
     }
   }
 
-  std::nth_element(begin, middle, end_of_current_set);
+  std::nth_element(begin, middle, end_of_current_set, comp);
 }
 
 template<typename I, typename C>
@@ -213,10 +213,19 @@ void threeway_relaxed_select_select(I begin, I middle, I end, const C& comp) {
   else {
     std::array<I, 51> pivots;
     std::mt19937 engine;
-    std::generate_n(pivots.begin(), 51, [&] { return begin + engine() % (end - begin); });
+    auto size = static_cast<size_t>(end - begin);
+    std::generate_n(
+      pivots.begin(),
+      51,
+      [&engine,begin,size]
+        { return begin + static_cast<std::ptrdiff_t>(engine() % size); });
     auto index = ((middle - begin) * 51) / (end - begin);
-    std::nth_element(pivots.begin(), pivots.begin() + index, pivots.end(), [&comp](auto p1, auto p2) { return comp(*p1, *p2); });
-    auto pivot = pivots[index];
+    std::nth_element(
+      pivots.begin(),
+      pivots.begin() + index,
+      pivots.end(),
+      [&comp](auto p1, auto p2) { return comp(*p1, *p2); });
+    auto pivot = pivots[static_cast<size_t>(index)];
     std::swap(*begin, *pivot);
     auto it = std::partition(begin + 1, end, [begin, &comp](auto val) { return comp(val, *begin); });
     std::swap(*begin, *--it);
